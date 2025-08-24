@@ -1,11 +1,9 @@
 package ru.top.academy;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.Map.Entry.comparingByValue;
 
 public class Analyzer {
 
@@ -37,7 +35,7 @@ public class Analyzer {
                 .filter(product -> product.getId() == productId)
                 .findFirst()
                 .map(Product::getName)
-                .get();
+                .orElse("null");
     }
 
     public List<String> getTopThreeSellingProducts(List<Product> products, List<Sale> sales) {
@@ -108,7 +106,7 @@ public class Analyzer {
                 .filter(product -> product.getId() == sale.getProductId())
                 .findFirst()
                 .map(product -> product.getPrice() * sale.getQuantity())
-                .get();
+                .orElse(0.0);
     }
 
     private String getNameSuitableStore(List<Store> stores, Sale sale) {
@@ -116,7 +114,50 @@ public class Analyzer {
                 .filter(store -> store.getId() == sale.getStoreId())
                 .findFirst()
                 .map(Store::getName)
-                .get();
+                .orElse("null");
     }
 
+    public List<String> findProductsThatAreInStockButHaveNeverBeenSold(List<Warehouse> warehouses, List<Sale> sales, List<Product> products) {
+
+        List<Integer> productsId = sales.stream()
+                .map(Sale::getProductId)
+                .distinct()
+                .toList();
+
+        return warehouses.stream()
+                .map(Warehouse::getProductId)
+                .distinct()
+                .filter(productId -> !productsId.contains(productId))
+                .map(warehouseProductId -> products.stream()
+                        .filter(product -> product.getId() == warehouseProductId)
+                        .findFirst()
+                        .map(Product::getName)
+                        .orElse("null"))
+                .toList();
+
+    }
+
+    public Map<String, Double> calculateAveragePriceProducts(List<Product> products) {
+        return products.stream()
+                .collect(Collectors.groupingBy(
+                        Product::getCategory,
+                        Collectors.averagingDouble(Product::getPrice)
+                ));
+    }
+
+    public List<Store> findStoresWithNoSalesForMoreThanTwoDays(List<Sale> sales, List<Store> stores) {
+
+        LocalDate today = LocalDate.of(2019, 5, 5);
+        LocalDate currentDay = today.minusDays(2);
+
+        List<Integer> suitableSale = sales.stream()
+                .filter(sale -> sale.getDate().isBefore(currentDay) || sale.getDate().isEqual(currentDay))
+                .map(Sale::getStoreId)
+                .toList();
+
+        return stores.stream()
+                .filter(store -> suitableSale.contains(store.getId()))
+                .toList();
+
+    }
 }
